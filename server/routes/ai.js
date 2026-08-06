@@ -71,35 +71,43 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             }
         };
 
-        let selectedModel = "gemini-1.5-flash"; // Default fallback
-        try {
-            // Dynamically fetch the EXACT models available for this specific API key
-            const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
-            if (modelsRes.ok) {
-                const data = await modelsRes.json();
-                const availableModels = data.models
-                    .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
-                    .map(m => m.name.replace('models/', ''));
+        const modelsToTry = [
+            'gemini-2.5-flash',
+            'gemini-2.5-pro',
+            'gemini-2.0-flash',
+            'gemini-2.0-pro-exp',
+            'gemini-2.0-flash-exp',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-8b',
+            'gemini-1.5-pro',
+            'gemini-1.0-pro',
+            'gemini-pro',
+            'gemini-pro-vision'
+        ];
+
+        let responseText;
+        let lastError;
+
+        for (const modelName of modelsToTry) {
+            try {
+                const model = genAI.getGenerativeModel({ 
+                    model: modelName,
+                    systemInstruction: customSystemPrompt,
+                    generationConfig: { responseMimeType: "application/json" }
+                });
                 
-                if (availableModels.length > 0) {
-                    // Prefer a 'flash' model for speed, otherwise just grab the first one that works
-                    const flashModel = availableModels.find(m => m.includes('flash'));
-                    selectedModel = flashModel || availableModels[0];
-                }
+                const result = await model.generateContent([finalPrompt, imagePart]);
+                responseText = result.response.text();
+                break; // If successful, break out of the loop immediately!
+            } catch (err) {
+                lastError = err;
+                console.warn(`Model ${modelName} failed, trying next...`);
             }
-        } catch (e) {
-            console.error("Failed to dynamically fetch models, using fallback", e);
         }
 
-        const model = genAI.getGenerativeModel({ 
-            model: selectedModel,
-            systemInstruction: customSystemPrompt,
-            generationConfig: { responseMimeType: "application/json" }
-        });
-
-        const result = await model.generateContent([finalPrompt, imagePart]);
-        const response = result.response;
-        const responseText = response.text();
+        if (!responseText) {
+            throw lastError || new Error("All Gemini models failed. Please check your API key.");
+        }
         
         let structuredData;
         try {
