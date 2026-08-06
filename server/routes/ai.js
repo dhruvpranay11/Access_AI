@@ -72,7 +72,7 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         };
 
         let response;
-        const modelsToTry = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'];
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
         let lastError;
 
         for (const model of modelsToTry) {
@@ -132,7 +132,7 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
 
     } catch (error) {
         console.error('AI Error:', error);
-        res.status(500).json({ error: 'Failed to process image' });
+        res.status(500).json({ error: error.message || 'Failed to process image' });
     }
 });
 
