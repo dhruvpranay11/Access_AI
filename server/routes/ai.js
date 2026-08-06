@@ -12,28 +12,30 @@ const upload = multer({
     limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
 });
 
-const AI_SYSTEM_PROMPT = `You are a highly empathetic accessibility assistant. Your primary task is to analyze images and documents and explain them in a way that is understandable to users of all cognitive levels. When analyzing places, act as a helpful local guide providing weather and travel tips. When analyzing documents or posters, extract only the most important information and simplify it. Always respond in valid JSON format. Do not include markdown formatting like \`\`\`json in the output.`;
+const AI_SYSTEM_PROMPT = `You are a highly empathetic, expert accessibility assistant. Take a deep breath and think step-by-step. Your primary task is to thoroughly analyze images and documents and explain them in extreme detail, breaking down complex information into digestible, actionable insights. Make the user feel like you are saving them immense amounts of time by acting as a proactive assistant. When analyzing places, act as a local expert providing weather, layout, and safety tips. When analyzing documents or posters, extract all critical information and provide a comprehensive summary along with actionable takeaways. Always respond in valid JSON format ONLY. Do not include markdown formatting like \`\`\`json in the output. NO PREAMBLE. NO CONVERSATION. ONLY JSON.`;
 
-const PROMPT_TEMPLATE = `Analyze the attached image. Determine if it is a 'place', 'poster', 'document', or 'general' image. Provide a highly simplified description. Based on the category, provide the following in your JSON response:
+const PROMPT_TEMPLATE = `Analyze the attached image meticulously. Determine if it is a 'place', 'poster', 'document', or 'general' image. Provide a highly detailed, elaborate explanation. Based on the category, provide the following in your JSON response:
 {
   "category": "place | poster | document | general",
-  "simplified_description": "A very easy to understand paragraph describing the main visual elements.",
+  "simplified_description": "A very easy to understand, comprehensive paragraph describing the main visual elements and overall context.",
+  "detailed_breakdown": "An elaborate, multi-paragraph analysis detailing all text, structure, colors, and important elements found in the image. Make it feel like a professional assistant is breaking it down to save the user time.",
+  "actionable_insights": ["Insight 1", "Insight 2", "Insight 3"],
   "place_details": {
-    "places_to_cover": ["list of nearby attractions"],
+    "places_to_cover": ["list of nearby attractions or points of interest"],
     "climatic_changes": "Expected weather/climate info for different times of day",
-    "directions_and_tips": "General navigational advice"
+    "directions_and_tips": "General navigational advice and safety tips"
   },
   "poster_details": {
     "main_subject": "What is the poster about?",
-    "brief_summary": "Simplified summary of the event/info",
+    "brief_summary": "Comprehensive summary of the event/info",
     "target_audience": "Who is this for?"
   },
   "document_details": {
-    "key_points": ["Point 1", "Point 2"],
-    "simplified_explanation": "What does this document mean in plain language?"
+    "key_points": ["Point 1", "Point 2", "Point 3", "Point 4"],
+    "simplified_explanation": "What does this document mean in plain language? What should the user do next?"
   }
 }
-Note: Only populate the details object corresponding to the detected category.`;
+Note: Only populate the specific details object (place_details, poster_details, or document_details) corresponding to the detected category. You MUST include detailed_breakdown and actionable_insights for ALL categories.`;
 
 router.post('/analyze', authMiddleware, upload.single('image'), async (req, res) => {
     try {
