@@ -71,8 +71,28 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             }
         };
 
+        let selectedModel = "gemini-1.5-flash"; // Default fallback
+        try {
+            // Dynamically fetch the EXACT models available for this specific API key
+            const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
+            if (modelsRes.ok) {
+                const data = await modelsRes.json();
+                const availableModels = data.models
+                    .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+                    .map(m => m.name.replace('models/', ''));
+                
+                if (availableModels.length > 0) {
+                    // Prefer a 'flash' model for speed, otherwise just grab the first one that works
+                    const flashModel = availableModels.find(m => m.includes('flash'));
+                    selectedModel = flashModel || availableModels[0];
+                }
+            }
+        } catch (e) {
+            console.error("Failed to dynamically fetch models, using fallback", e);
+        }
+
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
+            model: selectedModel,
             systemInstruction: customSystemPrompt,
             generationConfig: { responseMimeType: "application/json" }
         });
