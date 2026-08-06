@@ -12,7 +12,7 @@ const upload = multer({
     limits: { fileSize: 20 * 1024 * 1024 }, // 20MB limit
 });
 
-const AI_SYSTEM_PROMPT = `You are a highly empathetic accessibility assistant. Your primary task is to analyze images and documents and explain them in a way that is understandable to users of all cognitive levels. When analyzing places, act as a helpful local guide providing weather and travel tips. When analyzing documents or posters, extract only the most important information and simplify it. Always respond in valid JSON format ONLY. Do not include markdown formatting like \`\`\`json in the output. NO PREAMBLE. NO CONVERSATION. ONLY JSON.`;
+const AI_SYSTEM_PROMPT = `You are a highly empathetic accessibility assistant. Your primary task is to analyze images and documents and explain them in a way that is understandable to users of all cognitive levels. When analyzing places, act as a helpful local guide providing weather and travel tips. When analyzing documents or posters, extract only the most important information and simplify it. CRITICAL: You MUST wrap your final JSON response in \`\`\`json ... \`\`\` markdown blocks. Do not output any JSON outside of this block.`;
 
 const PROMPT_TEMPLATE = `Analyze the attached image. Determine if it is a 'place', 'poster', 'document', or 'general' image. Provide a highly simplified description. Based on the category, provide the following in your JSON response:
 {
@@ -33,12 +33,12 @@ const PROMPT_TEMPLATE = `Analyze the attached image. Determine if it is a 'place
     "simplified_explanation": "What does this document mean in plain language?"
   }
 }
-Note: Only populate the details object corresponding to the detected category.`;
+Note: Only populate the details object corresponding to the detected category. Remember to wrap the entire JSON in \`\`\`json ... \`\`\``;
 
 router.post('/analyze', authMiddleware, upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No image provided' });
+            return res.status(400).json({ error: 'No image uploaded' });
         }
 
         if (!genAI) {
@@ -51,19 +51,19 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         let customSystemPrompt = AI_SYSTEM_PROMPT;
         if (user) {
             if (user.accessibility_needs) {
-                customSystemPrompt += `\nThe user has the following accessibility needs: ${user.accessibility_needs}. Please ensure the simplified description respects these needs.`;
+                customSystemPrompt += `\n\nThe user has the following accessibility needs: ${user.accessibility_needs}. Please ensure the simplified description respects these needs.`;
             }
             if (user.preferred_language) {
-                customSystemPrompt += `\nPlease provide the final output in the following language: ${user.preferred_language}.`;
+                customSystemPrompt += `\n\nPlease provide the final output in the following language: ${user.preferred_language}.`;
             }
         }
 
         const customText = req.body.customText || '';
         let finalPrompt = PROMPT_TEMPLATE;
         if (customText.trim()) {
-            finalPrompt += `\n\nUSER'S SPECIFIC CONTEXT OR QUESTION: "${customText}"\nPlease ensure your response actively addresses this context/question while adhering to the JSON schema.`;
+            finalPrompt += `\n\nUSER'S SPECIFIC CONTEXT OR QUESTION: "${customText}"\nPlease ensure your response actively addresses this context/question.`;
         }
-
+        
         const imagePart = {
             inlineData: {
                 data: req.file.buffer.toString('base64'),
@@ -92,8 +92,7 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
                         triedModels.push(modelName);
                         const model = genAI.getGenerativeModel({ 
                             model: modelName,
-                            systemInstruction: customSystemPrompt,
-                            generationConfig: { responseMimeType: "application/json" }
+                            systemInstruction: customSystemPrompt
                         });
                         
                         const result = await model.generateContent([finalPrompt, imagePart]);
@@ -119,15 +118,23 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         
         let structuredData;
         try {
-            // Aggressively strip any markdown code blocks the AI might have added
-            let cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            let cleanedText = responseText;
             
-            // Extract the JSON object
-            const startIndex = cleanedText.indexOf('{');
-            const endIndex = cleanedText.lastIndexOf('}');
-            if (startIndex !== -1 && endIndex !== -1) {
-                cleanedText = cleanedText.substring(startIndex, endIndex + 1);
+            // Many advanced models output their "thoughts" first. 
+            // We force them to wrap the final JSON in markdown blocks to extract it cleanly.
+            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+            
+            if (jsonMatch) {
+                cleanedText = jsonMatch[1].trim();
+            } else {
+                // Fallback: grab from first { to last }
+                const startIndex = cleanedText.indexOf('{');
+                const endIndex = cleanedText.lastIndexOf('}');
+                if (startIndex !== -1 && endIndex !== -1) {
+                    cleanedText = cleanedText.substring(startIndex, endIndex + 1);
+                }
             }
+            
             structuredData = JSON.parse(cleanedText);
         } catch (e) {
             console.error('Failed to parse Gemini response as JSON', responseText);
