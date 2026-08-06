@@ -7,8 +7,7 @@
     "dev": "vite --port 3000",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "npx serve -s dist -l $PORT"
+    "preview": "vite preview"
   },
   "dependencies": {
     "axios": "^1.19.0",
