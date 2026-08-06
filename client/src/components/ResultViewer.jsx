@@ -155,43 +155,6 @@ const ResultViewer = ({ result, userPrompt }) => {
                 </div>
             </GlassCard>
 
-            {result.detailed_breakdown && (
-                <GlassCard>
-                    <div className="flex gap-4 items-start">
-                        <div className="p-3 bg-brand-purple/20 rounded-2xl border border-brand-purple/30">
-                            <FileText className="w-6 h-6 text-brand-purple shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-bold text-brand-purple uppercase tracking-wider mb-2">Detailed Breakdown</h3>
-                            <div className="text-gray-300 font-light text-lg leading-relaxed whitespace-pre-wrap">
-                                {result.detailed_breakdown}
-                            </div>
-                        </div>
-                    </div>
-                </GlassCard>
-            )}
-
-            {result.actionable_insights && result.actionable_insights.length > 0 && (
-                <GlassCard>
-                    <div className="flex gap-4 items-start">
-                        <div className="p-3 bg-rose-400/20 rounded-2xl border border-rose-400/30">
-                            <Sparkles className="w-6 h-6 text-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.5)]" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-bold text-rose-400 uppercase tracking-wider mb-4">Actionable Insights</h3>
-                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {result.actionable_insights.map((insight, idx) => (
-                                    <li key={idx} className="flex gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
-                                        <span className="text-rose-400 font-bold shrink-0">{idx + 1}.</span>
-                                        <span className="text-gray-200">{insight}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </GlassCard>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {renderCategorySpecific()}
             </div>
