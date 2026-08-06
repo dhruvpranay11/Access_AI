@@ -119,8 +119,10 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         
         let structuredData;
         try {
-            // Extract the JSON object from the response text, ignoring any markdown or preamble
-            let cleanedText = responseText;
+            // Aggressively strip any markdown code blocks the AI might have added
+            let cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            
+            // Extract the JSON object
             const startIndex = cleanedText.indexOf('{');
             const endIndex = cleanedText.lastIndexOf('}');
             if (startIndex !== -1 && endIndex !== -1) {
@@ -129,7 +131,10 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             structuredData = JSON.parse(cleanedText);
         } catch (e) {
             console.error('Failed to parse Gemini response as JSON', responseText);
-            return res.status(500).json({ error: 'Failed to parse AI output into JSON structure. Please try again.' });
+            
+            // Send exactly what the AI said back to the frontend so the user can read it!
+            const rawOutput = responseText.length > 200 ? responseText.substring(0, 200) + '...' : responseText;
+            return res.status(500).json({ error: `The AI responded, but not in the requested format. AI said: "${rawOutput}"` });
         }
 
         const result = await db.run(
