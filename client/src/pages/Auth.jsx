@@ -17,7 +17,7 @@ const Auth = () => {
         try {
             if (isLogin) {
                 await login(email, password);
-                navigate('/workspace');
+                navigate('/');
             } else {
                 await register(email, password);
                 navigate('/dashboard');
