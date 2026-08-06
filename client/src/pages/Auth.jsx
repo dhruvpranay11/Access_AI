@@ -17,10 +17,11 @@ const Auth = () => {
         try {
             if (isLogin) {
                 await login(email, password);
+                navigate('/workspace');
             } else {
                 await register(email, password);
+                navigate('/dashboard');
             }
-            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.error || 'Authentication failed');
         }
