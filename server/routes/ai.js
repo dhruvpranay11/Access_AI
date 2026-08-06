@@ -71,42 +71,50 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             }
         };
 
-        const modelsToTry = [
-            'gemini-2.5-flash',
-            'gemini-2.5-pro',
-            'gemini-2.0-flash',
-            'gemini-2.0-pro-exp',
-            'gemini-2.0-flash-exp',
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-8b',
-            'gemini-1.5-pro',
-            'gemini-1.0-pro',
-            'gemini-pro',
-            'gemini-pro-vision'
-        ];
-
         let responseText;
         let lastError;
+        let triedModels = [];
 
-        for (const modelName of modelsToTry) {
-            try {
-                const model = genAI.getGenerativeModel({ 
-                    model: modelName,
-                    systemInstruction: customSystemPrompt,
-                    generationConfig: { responseMimeType: "application/json" }
-                });
+        try {
+            // Fetch exactly which models this specific API key is allowed to use
+            const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
+            if (modelsRes.ok) {
+                const data = await modelsRes.json();
                 
-                const result = await model.generateContent([finalPrompt, imagePart]);
-                responseText = result.response.text();
-                break; // If successful, break out of the loop immediately!
-            } catch (err) {
-                lastError = err;
-                console.warn(`Model ${modelName} failed, trying next...`);
+                // Filter for models that support generating content
+                const availableModels = data.models
+                    .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+                    .map(m => m.name.replace('models/', ''));
+                
+                // Try every single valid model Google allows us to use!
+                for (const modelName of availableModels) {
+                    try {
+                        triedModels.push(modelName);
+                        const model = genAI.getGenerativeModel({ 
+                            model: modelName,
+                            systemInstruction: customSystemPrompt,
+                            generationConfig: { responseMimeType: "application/json" }
+                        });
+                        
+                        const result = await model.generateContent([finalPrompt, imagePart]);
+                        responseText = result.response.text();
+                        break; // If successful, break out of the loop!
+                    } catch (err) {
+                        lastError = err;
+                        console.warn(`Model ${modelName} failed:`, err.message);
+                    }
+                }
+            } else {
+                throw new Error("Failed to authenticate API key with ModelService");
             }
+        } catch (err) {
+            console.error("Failed to dynamically fetch models:", err);
+            lastError = err;
         }
 
         if (!responseText) {
-            throw lastError || new Error("All Gemini models failed. Please check your API key.");
+            const modelList = triedModels.join(', ');
+            throw new Error(`Google rejected the request for all tried models (${modelList || 'none available'}). Last error: ${lastError?.message || 'Unknown'}`);
         }
         
         let structuredData;
