@@ -1,11 +1,11 @@
 import express from 'express';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getDb } from '../db/database.js';
 import { authMiddleware } from '../middleware/auth.js';
 import multer from 'multer';
 
 const router = express.Router();
-const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 const upload = multer({ 
     storage: multer.memoryStorage(),
@@ -41,6 +41,10 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             return res.status(400).json({ error: 'No image provided' });
         }
 
+        if (!genAI) {
+            return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+        }
+
         const db = getDb();
         const user = await db.get('SELECT accessibility_needs, preferred_language FROM users WHERE id = ?', [req.user.id]);
         
@@ -60,10 +64,6 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             finalPrompt += `\n\nUSER'S SPECIFIC CONTEXT OR QUESTION: "${customText}"\nPlease ensure your response actively addresses this context/question while adhering to the JSON schema.`;
         }
 
-        if (!ai) {
-            return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
-        }
-
         const imagePart = {
             inlineData: {
                 data: req.file.buffer.toString('base64'),
@@ -71,39 +71,15 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
             }
         };
 
-        let response;
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-        let lastError;
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            systemInstruction: customSystemPrompt,
+            generationConfig: { responseMimeType: "application/json" }
+        });
 
-        for (const model of modelsToTry) {
-            try {
-                response = await ai.models.generateContent({
-                    model: model,
-                    contents: [
-                        { role: 'user', parts: [ imagePart, { text: finalPrompt } ] }
-                    ],
-                    config: {
-                        systemInstruction: customSystemPrompt,
-                        responseMimeType: 'application/json',
-                    }
-                });
-                break; // Success, break out of loop
-            } catch (err) {
-                lastError = err;
-                console.warn(`Model ${model} failed, trying next...`, err.status || err.message);
-                if (err.status === 429 && err.message.includes('Quota exceeded')) {
-                   // Continue to next model
-                } else if (err.status !== 503 && err.status !== 404) {
-                   break; // Unrecoverable error
-                }
-            }
-        }
-
-        if (!response) {
-            throw lastError || new Error('All models failed');
-        }
-
-        const responseText = response.text;
+        const result = await model.generateContent([finalPrompt, imagePart]);
+        const response = result.response;
+        const responseText = response.text();
         
         let structuredData;
         try {
