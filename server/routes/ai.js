@@ -119,10 +119,17 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         
         let structuredData;
         try {
-            structuredData = JSON.parse(responseText);
+            // Extract the JSON object from the response text, ignoring any markdown or preamble
+            let cleanedText = responseText;
+            const startIndex = cleanedText.indexOf('{');
+            const endIndex = cleanedText.lastIndexOf('}');
+            if (startIndex !== -1 && endIndex !== -1) {
+                cleanedText = cleanedText.substring(startIndex, endIndex + 1);
+            }
+            structuredData = JSON.parse(cleanedText);
         } catch (e) {
             console.error('Failed to parse Gemini response as JSON', responseText);
-            return res.status(500).json({ error: 'Failed to generate a valid structured response' });
+            return res.status(500).json({ error: 'Failed to parse AI output into JSON structure. Please try again.' });
         }
 
         const result = await db.run(
