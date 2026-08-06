@@ -184,4 +184,21 @@ router.get('/history', authMiddleware, async (req, res) => {
     }
 });
 
+router.delete('/history/:id', authMiddleware, async (req, res) => {
+    try {
+        const db = getDb();
+        // Ensure the user owns the history item they are trying to delete
+        const result = await db.run('DELETE FROM analyses WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+        
+        if (result.changes === 0) {
+            return res.status(404).json({ error: 'History item not found or unauthorized' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete history error:', error);
+        res.status(500).json({ error: 'Failed to delete history item' });
+    }
+});
+
 export default router;

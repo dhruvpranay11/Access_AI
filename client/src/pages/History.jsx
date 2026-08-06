@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import ResultViewer from '../components/ResultViewer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { History as HistoryIcon, Loader2 } from 'lucide-react';
+import { History as HistoryIcon, Loader2, Trash2 } from 'lucide-react';
 
 const History = () => {
     const [history, setHistory] = useState([]);
@@ -23,6 +23,22 @@ const History = () => {
         fetchHistory();
     }, []);
 
+    const handleDelete = async (e, id) => {
+        e.stopPropagation(); // Prevent opening the history item when clicking delete
+        if (!window.confirm("Are you sure you want to delete this history item?")) return;
+
+        try {
+            await api.delete(`/ai/history/${id}`);
+            setHistory(prev => prev.filter(item => item.id !== id));
+            if (selectedItem?.id === id) {
+                setSelectedItem(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete history item', error);
+            alert('Failed to delete history item');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -41,9 +57,18 @@ const History = () => {
                 >
                     ← Back to History
                 </button>
-                <div className="bg-white/5 p-6 rounded-2xl mb-8 border border-white/10 backdrop-blur-sm">
-                    <p className="text-gray-400 font-medium">Analyzed Image: <span className="text-white font-bold">{selectedItem.image_name}</span></p>
-                    <p className="text-gray-500 text-sm mt-1">{new Date(selectedItem.created_at).toLocaleString()}</p>
+                <div className="bg-white/5 p-6 rounded-2xl mb-8 border border-white/10 backdrop-blur-sm flex justify-between items-center">
+                    <div>
+                        <p className="text-gray-400 font-medium">Analyzed Image: <span className="text-white font-bold">{selectedItem.image_name}</span></p>
+                        <p className="text-gray-500 text-sm mt-1">{new Date(selectedItem.created_at).toLocaleString()}</p>
+                    </div>
+                    <button 
+                        onClick={(e) => handleDelete(e, selectedItem.id)}
+                        className="p-3 bg-rose-500/10 text-rose-400 rounded-xl hover:bg-rose-500/20 hover:text-rose-300 transition-colors border border-rose-500/20"
+                        title="Delete Analysis"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
                 </div>
                 <ResultViewer result={selectedItem.structured_data} userPrompt={selectedItem.user_prompt} />
             </div>
@@ -98,9 +123,18 @@ const History = () => {
                                     <span className="bg-white/10 text-white text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 group-hover:bg-brand-cyan group-hover:border-brand-cyan transition-colors">
                                         {item.category}
                                     </span>
-                                    <span className="text-gray-500 text-xs">
-                                        {new Date(item.created_at).toLocaleDateString()}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-gray-500 text-xs">
+                                            {new Date(item.created_at).toLocaleDateString()}
+                                        </span>
+                                        <button 
+                                            onClick={(e) => handleDelete(e, item.id)}
+                                            className="text-gray-500 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                                 <h3 className="font-bold text-lg mb-2 text-white line-clamp-1 group-hover:text-brand-cyan transition-colors">{item.image_name}</h3>
                                 {item.user_prompt && (
