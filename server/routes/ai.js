@@ -120,14 +120,23 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         try {
             let cleanedText = responseText;
             
-            // Many advanced models output their "thoughts" first. 
-            // We force them to wrap the final JSON in markdown blocks to extract it cleanly.
-            const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+            // First, forcefully strip any markdown blocks if the AI included them
+            cleanedText = cleanedText.replace(/```json/gi, '').replace(/```/g, '').trim();
             
-            if (jsonMatch) {
-                cleanedText = jsonMatch[1].trim();
+            // Second, find exactly where our JSON object starts by looking for our core key
+            const categoryIndex = cleanedText.indexOf('"category"');
+            
+            if (categoryIndex !== -1) {
+                // Find the first '{' immediately before the "category" key
+                const startIndex = cleanedText.lastIndexOf('{', categoryIndex);
+                // Find the very last '}' in the text
+                const endIndex = cleanedText.lastIndexOf('}');
+                
+                if (startIndex !== -1 && endIndex !== -1) {
+                    cleanedText = cleanedText.substring(startIndex, endIndex + 1);
+                }
             } else {
-                // Fallback: grab from first { to last }
+                // Fallback if "category" isn't found for some reason
                 const startIndex = cleanedText.indexOf('{');
                 const endIndex = cleanedText.lastIndexOf('}');
                 if (startIndex !== -1 && endIndex !== -1) {
@@ -139,7 +148,6 @@ router.post('/analyze', authMiddleware, upload.single('image'), async (req, res)
         } catch (e) {
             console.error('Failed to parse Gemini response as JSON', responseText);
             
-            // Send exactly what the AI said back to the frontend so the user can read it!
             const rawOutput = responseText.length > 200 ? responseText.substring(0, 200) + '...' : responseText;
             return res.status(500).json({ error: `The AI responded, but not in the requested format. AI said: "${rawOutput}"` });
         }
