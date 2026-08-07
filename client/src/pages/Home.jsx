@@ -41,7 +41,7 @@ const Home = () => {
                 <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 max-w-4xl leading-tight drop-shadow-lg">
                     Break down barriers with <br className="hidden md:block"/>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan via-brand-purple to-indigo-500 animate-pulse">
-                        AccessAI
+                        AccessVision
                     </span>
                 </motion.h1>
                 
@@ -52,7 +52,7 @@ const Home = () => {
                 <motion.div variants={itemVariants}>
                     <Link to={user ? "/workspace" : "/auth"} className="btn-primary text-lg px-10 py-4 shadow-[0_0_30px_rgba(157,78,221,0.5)] hover:scale-105 transition-transform duration-300 relative overflow-hidden group">
                         <span className="relative z-10 flex items-center gap-2">
-                            {user ? "Go to Workspace" : "Start Using AccessAI"}
+                            {user ? "Go to Workspace" : "Start Using AccessVision"}
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </span>
                         <div className="absolute inset-0 bg-gradient-to-r from-brand-cyan to-brand-purple opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

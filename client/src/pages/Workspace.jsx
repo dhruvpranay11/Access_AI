@@ -88,7 +88,7 @@ const Workspace = () => {
                         <Sparkles className="w-8 h-8 text-brand-cyan drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
                     </motion.div>
                     <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-500 mb-6 tracking-tighter drop-shadow-sm">
-                        AccessAI Workspace
+                        AccessVision Workspace
                     </h1>
                     <p className="text-gray-400 font-light text-xl max-w-2xl mx-auto leading-relaxed">
                         Upload a visual, ask a question, and let our AI provide a simplified, highly accessible description tailored just for you.

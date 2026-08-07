@@ -40,7 +40,7 @@ const Auth = () => {
                 <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-brand-cyan rounded-full blur-[80px] opacity-20 mix-blend-screen pointer-events-none"></div>
                 
                 <h2 className="text-4xl font-bold text-white mb-3 relative z-10 tracking-tight">
-                    {isLogin ? 'Welcome back' : 'Join AccessAI'}
+                    {isLogin ? 'Welcome back' : 'Join AccessVision'}
                 </h2>
                 <p className="text-gray-400 mb-10 relative z-10 font-light">
                     {isLogin ? 'Enter your details to access your workspace.' : 'Sign up to personalize your accessibility profile.'}
